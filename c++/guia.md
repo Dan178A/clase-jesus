@@ -13,6 +13,7 @@ Esta guía cubre los temas clave para el **Quiz 2** y el inicio del **Parcial 2*
 Imagina una pirámide militar estricta. A diferencia de un árbol binario normal donde los datos van a la izquierda o derecha según su valor, aquí lo único que importa es **quién está arriba**.
 
 Existen dos tipos:
+[100, 90, 80, 40, 50, 10]
 
   * **Max-Heap:** El "Jefe" (Padre) siempre debe ser **MAYOR** que sus subordinados (Hijos). El número más grande siempre está en la raíz.
   * **Min-Heap:** El Padre siempre es **MENOR**. El número más pequeño está en la raíz.
@@ -128,6 +129,9 @@ En lugar de una tabla gigante, tenemos un arreglo donde cada posición guarda un
   * **Nodo A:** Tiene una lista -\> `[B] -> NULL`
   * **Nodo B:** Tiene una lista -\> `NULL` (Sin vecinos)
   * **Nodo C:** Tiene una lista -\> `[A] -> NULL`
+
+  
+![Adjacency List Diagram](350px-Caminosmascortos.jpg)
 
 **Ejemplo C++ (Estructura):**
 Esta estructura te resultará familiar porque usamos Nodos y Punteros, como en las listas que ya dominas.
