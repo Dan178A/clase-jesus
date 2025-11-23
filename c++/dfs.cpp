@@ -4,7 +4,7 @@
 
 using namespace std;
 
-// Clase Grafo usando Lista de Adyacencia (Lo que a Jesús le gusta)
+// Clase Grafo usando Lista de Adyacencia 
 class Grafo {
     int numNodos;
     vector<list<int>> adj; // Arreglo de listas
