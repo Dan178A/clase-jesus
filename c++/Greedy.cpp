@@ -20,7 +20,6 @@ public:
         adj[v].push_back(w);
         adj[w].push_back(v); // No dirigido
     }
-
     void colorear() {
         vector<int> resultado(V); // Guarda el color de cada nodo
 

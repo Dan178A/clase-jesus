@@ -42,7 +42,14 @@ imagina que eres un electricista. Tienes 5 casas (Nodos) y necesitas conectarlas
 ```cpp
 struct Arista {
     int origen, destino, peso;
-};
+}; A--------B
+   |        |
+   |        |
+   D--------C
+      8
+   A---->B// esto esta bien
+   A<----B // esto crea ciclo
+
 
 // Comparador para ordenar de menor a mayor
 bool compararAristas(Arista a, Arista b) {
@@ -160,7 +167,7 @@ void ColorearGreedy(int numNodos, vector<int> adj[]) {
 }
 ```
 
-### 3\. Algoritmo de Brelaz (DSatur) - Nivel Experto
+### 3\. Algoritmo de Brelaz (DSatur) - Nivel Experto // ejemplo pendiente
 
 El algoritmo Greedy a veces falla si el orden de los nodos es malo. **Brelaz** es más inteligente porque elige **QUÉ nodo pintar primero**.
 

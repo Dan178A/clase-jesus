@@ -1,4 +1,5 @@
-//Algoritmo de Prim (La Mancha de Aceite): Igual que Kruskal, pero creciendo desde un nodo inicial. Estructura: Lista de Adyacencia + Cola de Prioridad.
+//Algoritmo de Prim (La Mancha de Aceite): Igual que Kruskal, pero creciendo desde un nodo inicial. 
+//Estructura: Lista de Adyacencia + Cola de Prioridad.
 #include <iostream>
 #include <vector>
 #include <queue> // Necesario para priority_queue
@@ -35,7 +36,6 @@ int main() {
     grafo[3].push_back({4, 2}); // D-C
 
     // COLA DE PRIORIDAD (Min-Heap: El menor arriba)
-    // Sintaxis compleja de C++, solo dile a Jesus que esto ordena de menor a mayor.
     priority_queue<Par, vector<Par>, greater<Par>> cola;
 
     int costoTotal = 0;
