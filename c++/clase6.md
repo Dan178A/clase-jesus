@@ -193,3 +193,176 @@ Dibuja 4 nodos formando un cuadrado (A, B, C, D) y una diagonal cruzada (A con C
       * C es vecino de A y B -\> (Color ?).
 
 -----
+# 🎨 Clase Extra: Algoritmo de Brelaz (DSatur)
+
+**Tema:** Coloración Inteligente
+**Objetivo:** Pintar el grafo usando menos colores que el método Greedy.
+
+-----
+
+## 1\. ¿Por qué necesitamos a Brelaz?
+
+el algoritmo **Greedy** pinta los nodos en el orden que le demos (0, 1, 2...).
+
+  * **El Problema:** Si tenemos mala suerte con el orden, Greedy puede usar 5 colores cuando solo se necesitaban 3.
+  * **La Solución:** **Brelaz (DSatur)**. Este algoritmo no sigue un orden fijo. En cada paso, elige pintar el nodo que esté **"más estresado"** (el que tenga más restricciones).
+
+### 📋 Las 2 Reglas de Brelaz
+
+Para decidir a quién pintar, miramos dos cosas:
+
+1.  **Regla de Oro (Saturación):** Elige el nodo que tenga **más vecinos con colores DIFERENTES**.
+      * *Por qué:* Si un nodo tiene vecinos Rojo, Verde y Azul, está muy "saturado" (restringido). Hay que pintarlo YA antes de que se nos acaben las opciones.
+2.  **Regla de Desempate (Grado):** Si dos nodos tienen la misma saturación, elige el que tenga **más vecinos en total** (el más popular).
+
+-----
+
+## 🧠 Ejemplo Visual Paso a Paso
+
+Imagina un grafo con 5 nodos (A, B, C, D, E).
+
+1.  **Paso 1:** Nadie tiene color. Saturación de todos = 0.
+      * *Desempate:* Elegimos el nodo con más conexiones (Digamos que es **A**).
+      * 🎨 Pintamos **A de Color 0**.
+2.  **Paso 2:** Ahora miramos a los demás.
+      * Los vecinos de A ahora tienen Saturación = 1 (tienen un vecino pintado).
+      * Los que no son vecinos de A siguen en Saturación = 0.
+      * *Decisión:* Elegimos un vecino de A (Digamos **B**).
+      * 🎨 Pintamos **B de Color 1**.
+3.  **Paso 3 (La Magia):**
+      * Miramos al nodo **C**. Supongamos que C es vecino de A (Color 0) y de B (Color 1).
+      * ¡La Saturación de C es 2\! (Está rodeado de dos colores distintos).
+      * Miramos al nodo **D**. Solo es vecino de A. Su saturación es 1.
+      * *Decisión:* Brelaz grita: "¡Pinten a **C** primero\! Es el más crítico".
+
+-----
+
+## 💻 El Código en C++ (Laboratorio)
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <set> // Usamos set para contar colores únicos automáticamente
+
+using namespace std;
+
+struct NodoInfo {
+    int id;
+    int grado;          // Cuántos vecinos tiene
+    int saturacion;     // Cuántos colores distintos tiene alrededor
+    int color;          // Su color final (-1 si no tiene)
+};
+
+class GrafoBrelaz {
+    int V;
+    vector<vector<int>> adj; // Lista de adyacencia
+    vector<NodoInfo> infoNodos;
+
+public:
+    GrafoBrelaz(int V) {
+        this->V = V;
+        adj.resize(V);
+        infoNodos.resize(V);
+        for(int i=0; i<V; i++) {
+            infoNodos[i] = {i, 0, 0, -1}; // Inicializar: Sin color (-1)
+        }
+    }
+
+    void agregarArista(int v, int w) {
+        adj[v].push_back(w);
+        adj[w].push_back(v);
+        infoNodos[v].grado++; // Aumentamos la popularidad
+        infoNodos[w].grado++;
+    }
+
+    // Función auxiliar para calcular la saturación real de un nodo
+    int calcularSaturacion(int nodo) {
+        set<int> coloresVecinos; // El 'set' elimina duplicados automáticamente
+        for (int vecino : adj[nodo]) {
+            if (infoNodos[vecino].color != -1) {
+                coloresVecinos.insert(infoNodos[vecino].color);
+            }
+        }
+        return coloresVecinos.size(); // Devuelve cuántos colores DISTINTOS hay
+    }
+
+    void colorearDSatur() {
+        cout << "\n--- INICIANDO ALGORITMO DE BRELAZ (DSATUR) ---\n";
+        
+        for (int i = 0; i < V; i++) {
+            // PASO 1: Elegir el mejor candidato
+            int mejorNodo = -1;
+            int maxSat = -1;
+            int maxGrado = -1;
+
+            for (int j = 0; j < V; j++) {
+                if (infoNodos[j].color == -1) { // Solo mirar los no pintados
+                    
+                    // Actualizamos su saturación actual
+                    int satActual = calcularSaturacion(j);
+                    
+                    // Lógica de Brelaz:
+                    // 1. Mayor Saturación gana
+                    // 2. Empate? Mayor Grado gana
+                    if (satActual > maxSat || (satActual == maxSat && infoNodos[j].grado > maxGrado)) {
+                        mejorNodo = j;
+                        maxSat = satActual;
+                        maxGrado = infoNodos[j].grado;
+                    }
+                }
+            }
+
+            if (mejorNodo == -1) break; // Ya pintamos todos
+
+            // PASO 2: Asignarle el primer color disponible (Igual que Greedy)
+            vector<bool> disponible(V, true);
+            for (int vecino : adj[mejorNodo]) {
+                if (infoNodos[vecino].color != -1) {
+                    disponible[infoNodos[vecino].color] = false;
+                }
+            }
+
+            int colorEscogido;
+            for (colorEscogido = 0; colorEscogido < V; colorEscogido++) {
+                if (disponible[colorEscogido]) break;
+            }
+
+            // Pintar
+            infoNodos[mejorNodo].color = colorEscogido;
+            cout << "Turno " << i+1 << ": El nodo mas critico es " << mejorNodo 
+                 << " (Sat: " << maxSat << "). Le damos Color " << colorEscogido << endl;
+        }
+    }
+};
+
+int main() {
+    // Ejemplo: Un grafo "Rueda" (Un centro conectado a todos los de afuera)
+    // Este es difícil para Greedy pero fácil para Brelaz.
+    GrafoBrelaz g(6); // Centro (0) y 5 externos (1-5)
+
+    // El 0 conecta con todos (Es el más popular)
+    g.agregarArista(0, 1); g.agregarArista(0, 2); g.agregarArista(0, 3);
+    g.agregarArista(0, 4); g.agregarArista(0, 5);
+
+    // Los de afuera se conectan en círculo
+    g.agregarArista(1, 2); g.agregarArista(2, 3); g.agregarArista(3, 4);
+    g.agregarArista(4, 5); g.agregarArista(5, 1);
+
+    g.colorearDSatur();
+
+    return 0;
+}
+```
+
+-----
+
+## 📝 Tarea Rápida
+
+1.  **Ejecuta el código:** Observa la consola.
+2.  **Pregunta:** ¿A quién pintó primero el algoritmo?
+      * *Respuesta esperada:* Debería pintar al **Nodo 0** primero.
+      * *Por qué:* Aunque al principio todos tienen saturación 0, el Nodo 0 gana el desempate porque tiene **grado 5** (es amigo de todos), mientras que los otros tienen grado 3.
+3.  **Conclusión:** Brelaz atacó el problema más grande (el centro) primero, simplificando el resto del mapa.
+
+-----
+
