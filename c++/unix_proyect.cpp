@@ -1,357 +1,200 @@
 #include <iostream>
 #include <string>
+#include <fstream>
+#include <sstream>
 #include <ctime>
+
 using namespace std;
+
+// --- CLASES BASE Y ESTRUCTURAS ---
 
 struct Nodo {
     string nombre;
-    int tipo;
-    time_t fechaCreacion;
-    time_t fechaModificacion;
     Nodo* padre;
+    time_t fechaCreacion;
     
-    Nodo(string n, int t) {
-        nombre = n;
-        tipo = t;
+    Nodo(string n, Nodo* p = nullptr) : nombre(n), padre(p) {
         fechaCreacion = time(0);
-        fechaModificacion = time(0);
-        padre = nullptr;
     }
-    
     virtual ~Nodo() {}
-    
-    virtual bool esCarpeta() {
-        return tipo == 0;
-    }
-    
-    virtual bool esArchivo() {
-        return tipo == 1;
-    }
-    
-    virtual string obtenerRuta() {
-        if (padre == nullptr) {
-            return "/" + nombre;
-        }
-        
-        string ruta = "";
-        Nodo* actual = this;
-        
-        while (actual != nullptr) {
-            if (actual->padre != nullptr) {
-                ruta = "/" + actual->nombre + ruta;
-            } else {
-                ruta = "/" + actual->nombre;
-            }
-            actual = actual->padre;
-        }
-        
-        return ruta;
-    }
+    virtual bool esCarpeta() const = 0;
 };
 
-struct NodoArbol {
-    string nombre;
-    Nodo* dato;
-    NodoArbol* izq;
-    NodoArbol* der;
-    int altura;
-    
-    NodoArbol(string n, Nodo* d) {
-        nombre = n;
-        dato = d;
-        izq = nullptr;
-        der = nullptr;
-        altura = 1;
-    }
-};
-
-struct ArchivoTexto : Nodo {
+struct ArchivoTexto : public Nodo {
     string contenido;
-    
-    ArchivoTexto(string n, string c = "", Nodo* p = nullptr) : Nodo(n, 1) {
-        contenido = c;
-        padre = p;
-    }
-    
-    bool esArchivo() {
-        return true;
-    }
+    ArchivoTexto(string n, string c = "", Nodo* p = nullptr) : Nodo(n, p), contenido(c) {}
+    bool esCarpeta() const override { return false; }
 };
 
-struct Carpeta : Nodo {
-    NodoArbol* raizContenidos;
-    int cantidad;
-    
-    int alturaArbol(NodoArbol* n) {
-        if (n == nullptr) return 0;
-        return n->altura;
-    }
-    
-    int balanceArbol(NodoArbol* n) {
-        if (n == nullptr) return 0;
-        return alturaArbol(n->izq) - alturaArbol(n->der);
-    }
-    
-    NodoArbol* rotarDerecha(NodoArbol* y) {
-        NodoArbol* x = y->izq;
-        NodoArbol* T2 = x->der;
-        
+// --- ESTRUCTURA DINÁMICA: ÁRBOL AVL ---
+
+struct NodoAVL {
+    Nodo* dato;
+    NodoAVL *izq, *der;
+    int altura;
+
+    NodoAVL(Nodo* d) : dato(d), izq(nullptr), der(nullptr), altura(1) {}
+};
+
+class ArbolAVL {
+    int getAltura(NodoAVL* n) { return n ? n->altura : 0; }
+    int getBalance(NodoAVL* n) { return n ? getAltura(n->izq) - getAltura(n->der) : 0; }
+
+    NodoAVL* rotarDerecha(NodoAVL* y) {
+        NodoAVL* x = y->izq;
+        NodoAVL* T2 = x->der;
         x->der = y;
         y->izq = T2;
-        
-        y->altura = max(alturaArbol(y->izq), alturaArbol(y->der)) + 1;
-        x->altura = max(alturaArbol(x->izq), alturaArbol(x->der)) + 1;
-        
+        y->altura = max(getAltura(y->izq), getAltura(y->der)) + 1;
+        x->altura = max(getAltura(x->izq), getAltura(x->der)) + 1;
         return x;
     }
-    
-    NodoArbol* rotarIzquierda(NodoArbol* x) {
-        NodoArbol* y = x->der;
-        NodoArbol* T2 = y->izq;
-        
+
+    NodoAVL* rotarIzquierda(NodoAVL* x) {
+        NodoAVL* y = x->der;
+        NodoAVL* T2 = y->izq;
         y->izq = x;
         x->der = T2;
-        
-        x->altura = max(alturaArbol(x->izq), alturaArbol(x->der)) + 1;
-        y->altura = max(alturaArbol(y->izq), alturaArbol(y->der)) + 1;
-        
+        x->altura = max(getAltura(x->izq), getAltura(x->der)) + 1;
+        y->altura = max(getAltura(y->izq), getAltura(y->der)) + 1;
         return y;
     }
-    
-    NodoArbol* insertarEnArbol(NodoArbol* nodo, string nombre, Nodo* dato) {
-        if (nodo == nullptr) {
-            cantidad++;
-            return new NodoArbol(nombre, dato);
-        }
-        
-        if (nombre < nodo->nombre) {
-            nodo->izq = insertarEnArbol(nodo->izq, nombre, dato);
-        } else if (nombre > nodo->nombre) {
-            nodo->der = insertarEnArbol(nodo->der, nombre, dato);
-        } else {
-            return nodo;
-        }
-        
-        nodo->altura = 1 + max(alturaArbol(nodo->izq), alturaArbol(nodo->der));
-        
-        int balance = balanceArbol(nodo);
-        
-        if (balance > 1 && nombre < nodo->izq->nombre) {
-            return rotarDerecha(nodo);
-        }
-        
-        if (balance < -1 && nombre > nodo->der->nombre) {
-            return rotarIzquierda(nodo);
-        }
-        
-        if (balance > 1 && nombre > nodo->izq->nombre) {
+
+public:
+    NodoAVL* insertar(NodoAVL* nodo, Nodo* dato) {
+        if (!nodo) return new NodoAVL(dato);
+        if (dato->nombre < nodo->dato->nombre)
+            nodo->izq = insertar(nodo->izq, dato);
+        else if (dato->nombre > nodo->dato->nombre)
+            nodo->der = insertar(nodo->der, dato);
+        else return nodo;
+
+        nodo->altura = 1 + max(getAltura(nodo->izq), getAltura(nodo->der));
+        int balance = getBalance(nodo);
+
+        if (balance > 1 && dato->nombre < nodo->izq->dato->nombre) return rotarDerecha(nodo);
+        if (balance < -1 && dato->nombre > nodo->der->dato->nombre) return rotarIzquierda(nodo);
+        if (balance > 1 && dato->nombre > nodo->izq->dato->nombre) {
             nodo->izq = rotarIzquierda(nodo->izq);
             return rotarDerecha(nodo);
         }
-        
-        if (balance < -1 && nombre < nodo->der->nombre) {
+        if (balance < -1 && dato->nombre < nodo->der->dato->nombre) {
             nodo->der = rotarDerecha(nodo->der);
             return rotarIzquierda(nodo);
         }
-        
         return nodo;
     }
-    
-    NodoArbol* buscarEnArbol(NodoArbol* nodo, string nombre) {
-        if (nodo == nullptr || nodo->nombre == nombre) {
-            return nodo;
-        }
-        
-        if (nombre < nodo->nombre) {
-            return buscarEnArbol(nodo->izq, nombre);
-        }
-        
-        return buscarEnArbol(nodo->der, nombre);
+
+    Nodo* buscar(NodoAVL* nodo, string nombre) {
+        if (!nodo) return nullptr;
+        if (nodo->dato->nombre == nombre) return nodo->dato;
+        if (nombre < nodo->dato->nombre) return buscar(nodo->izq, nombre);
+        return buscar(nodo->der, nombre);
     }
-    
-    void recorrerArbol(NodoArbol* nodo) {
-        if (nodo != nullptr) {
-            recorrerArbol(nodo->izq);
-            cout << nodo->nombre;
-            if (nodo->dato->esCarpeta()) cout << "/";
-            cout << "  ";
-            recorrerArbol(nodo->der);
+
+    void listar(NodoAVL* nodo) {
+        if (nodo) {
+            listar(nodo->izq);
+            cout << nodo->dato->nombre << (nodo->dato->esCarpeta() ? "/" : "") << "  ";
+            listar(nodo->der);
         }
     }
     
-    void liberarArbol(NodoArbol* nodo) {
-        if (nodo != nullptr) {
-            liberarArbol(nodo->izq);
-            liberarArbol(nodo->der);
-            delete nodo->dato;
-            delete nodo;
-        }
-    }
-    
-    NodoArbol* nodoMinimo(NodoArbol* nodo) {
-        NodoArbol* actual = nodo;
-        while (actual->izq != nullptr) {
-            actual = actual->izq;
-        }
-        return actual;
-    }
-    
-    NodoArbol* eliminarDelArbol(NodoArbol* raiz, string nombre) {
-        if (raiz == nullptr) return raiz;
-        
-        if (nombre < raiz->nombre) {
-            raiz->izq = eliminarDelArbol(raiz->izq, nombre);
-        } else if (nombre > raiz->nombre) {
-            raiz->der = eliminarDelArbol(raiz->der, nombre);
-        } else {
-            if (raiz->izq == nullptr || raiz->der == nullptr) {
-                NodoArbol* temp = raiz->izq ? raiz->izq : raiz->der;
-                
-                if (temp == nullptr) {
-                    temp = raiz;
-                    raiz = nullptr;
-                } else {
-                    *raiz = *temp;
-                }
-                
-                delete temp->dato;
-                delete temp;
-                cantidad--;
-            } else {
-                NodoArbol* temp = nodoMinimo(raiz->der);
-                raiz->nombre = temp->nombre;
-                raiz->dato = temp->dato;
-                raiz->der = eliminarDelArbol(raiz->der, temp->nombre);
+    // Función para guardar en archivo (Recorrido Preorder)
+    void guardar(NodoAVL* nodo, ofstream& file, int nivel) {
+        if (nodo) {
+            for(int i=0; i<nivel; i++) file << "  ";
+            file << (nodo->dato->esCarpeta() ? "D|" : "F|") << nodo->dato->nombre;
+            if (!nodo->dato->esCarpeta()) file << "|" << static_cast<ArchivoTexto*>(nodo->dato)->contenido;
+            file << endl;
+            if (nodo->dato->esCarpeta()) {
+                // Lógica para bajar en la jerarquía (se implementa en la clase Carpeta)
             }
+            guardar(nodo->izq, file, nivel);
+            guardar(nodo->der, file, nivel);
         }
-        
-        if (raiz == nullptr) return raiz;
-        
-        raiz->altura = 1 + max(alturaArbol(raiz->izq), alturaArbol(raiz->der));
-        
-        int balance = balanceArbol(raiz);
-        
-        if (balance > 1 && balanceArbol(raiz->izq) >= 0) {
-            return rotarDerecha(raiz);
-        }
-        
-        if (balance > 1 && balanceArbol(raiz->izq) < 0) {
-            raiz->izq = rotarIzquierda(raiz->izq);
-            return rotarDerecha(raiz);
-        }
-        
-        if (balance < -1 && balanceArbol(raiz->der) <= 0) {
-            return rotarIzquierda(raiz);
-        }
-        
-        if (balance < -1 && balanceArbol(raiz->der) > 0) {
-            raiz->der = rotarDerecha(raiz->der);
-            return rotarIzquierda(raiz);
-        }
-        
-        return raiz;
-    }
-    
-    Carpeta(string n, Nodo* p = nullptr) : Nodo(n, 0) {
-        raizContenidos = nullptr;
-        cantidad = 0;
-        padre = p;
-    }
-    
-    ~Carpeta() {
-        liberarArbol(raizContenidos);
-    }
-    
-    bool agregar(Nodo* nuevo) {
-        if (nuevo == nullptr) return false;
-        
-        if (buscarEnArbol(raizContenidos, nuevo->nombre) != nullptr) {
-            return false;
-        }
-        
-        nuevo->padre = this;
-        
-        raizContenidos = insertarEnArbol(raizContenidos, nuevo->nombre, nuevo);
-        
-        fechaModificacion = time(0);
-        
-        return true;
-    }
-    
-    bool eliminar(string nombre) {
-        NodoArbol* encontrado = buscarEnArbol(raizContenidos, nombre);
-        
-        if (encontrado == nullptr) {
-            return false;
-        }
-        
-        raizContenidos = eliminarDelArbol(raizContenidos, nombre);
-        
-        fechaModificacion = time(0);
-        
-        return true;
-    }
-    
-    Nodo* buscar(string nombre) {
-        NodoArbol* encontrado = buscarEnArbol(raizContenidos, nombre);
-        
-        if (encontrado != nullptr) {
-            return encontrado->dato;
-        }
-        
-        return nullptr;
-    }
-    
-    bool existe(string nombre) {
-        return buscarEnArbol(raizContenidos, nombre) != nullptr;
-    }
-    
-    void listar() {
-        if (raizContenidos == nullptr) {
-            cout << "Vacio" << endl;
-            return;
-        }
-        
-        recorrerArbol(raizContenidos);
-        cout << endl;
-    }
-    
-    int obtenerCantidad() {
-        return cantidad;
-    }
-    
-    bool esCarpeta() {
-        return true;
     }
 };
 
-void navegarHaciaRaiz(Nodo* nodo) {
-    Nodo* actual = nodo;
-    while (actual != nullptr) {
-        cout << actual->nombre;
-        if (actual->esCarpeta()) cout << "/";
-        cout << " <- ";
-        actual = actual->padre;
-    }
-    cout << "RAIZ" << endl;
-}
+// --- CLASE CARPETA ---
 
-Nodo* buscarPorRuta(Carpeta* raiz, string ruta) {
-    if (ruta == "/" || ruta == "") {
-        return raiz;
-    }
-    
-    return raiz->buscar(ruta);
-}
+struct Carpeta : public Nodo {
+    NodoAVL* contenidos;
+    ArbolAVL gestionAVL;
 
-void mostrarEstructura(Nodo* nodo, int nivel = 0) {
-    if (nodo == nullptr) return;
-    
-    for (int i = 0; i < nivel; i++) {
-        cout << "  ";
+    Carpeta(string n, Nodo* p = nullptr) : Nodo(n, p), contenidos(nullptr) {}
+    bool esCarpeta() const override { return true; }
+
+    void agregar(Nodo* n) { contenidos = gestionAVL.insertar(contenidos, n); }
+    Nodo* buscar(string n) { return gestionAVL.buscar(contenidos, n); }
+};
+
+// --- TERMINAL Y LÓGICA DE RUTAS ---
+
+class Terminal {
+    Carpeta* raiz;
+    Carpeta* actual;
+
+public:
+    Terminal() {
+        raiz = new Carpeta("root");
+        actual = raiz;
     }
-    
-    cout << nodo->nombre;
-    if (nodo->esCarpeta()) cout << "/";
-    cout << endl;
+
+    string getRutaActual(Nodo* n) {
+        if (!n->padre) return "/";
+        return getRutaActual(n->padre) + (n->padre->padre ? "/" : "") + n->nombre;
+    }
+
+    Nodo* resolverRuta(string ruta) {
+        if (ruta == "/") return raiz;
+        if (ruta == "..") return actual->padre ? actual->padre : actual;
+        
+        stringstream ss(ruta);
+        string segmento;
+        Nodo* temp = (ruta[0] == '/') ? raiz : actual; // Absoluta vs Relativa 
+
+        while (getline(ss, segmento, '/')) {
+            if (segmento.empty()) continue;
+            if (temp->esCarpeta()) {
+                Nodo* sig = static_cast<Carpeta*>(temp)->buscar(segmento);
+                if (sig) temp = sig;
+                else return nullptr;
+            }
+        }
+        return temp;
+    }
+
+    void ejecutar() {
+        string entrada, comando, arg1, arg2;
+        while (true) {
+            cout << getRutaActual(actual) << "$ ";
+            getline(cin, entrada);
+            stringstream ss(entrada);
+            ss >> comando;
+
+            if (comando == "exit") break;
+            else if (comando == "ls") { actual->gestionAVL.listar(actual->contenidos); cout << endl; }
+            else if (comando == "mkdir") {
+                ss >> arg1;
+                actual->agregar(new Carpeta(arg1, actual));
+            }
+            else if (comando == "touch") {
+                ss >> arg1;
+                actual->agregar(new ArchivoTexto(arg1, "", actual));
+            }
+            else if (comando == "cd") {
+                ss >> arg1;
+                Nodo* destino = resolverRuta(arg1);
+                if (destino && destino->esCarpeta()) actual = static_cast<Carpeta*>(destino);
+                else cout << "Ruta no valida." << endl;
+            }
+        }
+    }
+};
+
+int main() {
+    Terminal term;
+    term.ejecutar();
+    return 0;
 }
